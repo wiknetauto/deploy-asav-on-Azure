@@ -12,9 +12,19 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 
 <https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview>
 
+
+## Notes
+
+- ASAv on Azure is "BYOL": bring your own license. Unlicensed ASAv instances still have a full feature set but interface speeds are greatly reduced
+- Refer to the [Cisco ASAv datasheet](https://www.cisco.com/c/en/us/products/collateral/security/adaptive-security-virtual-appliance-asav/adapt-security-virtual-appliance-ds.html) for recommended VM types
+
 ## Deployment
 
 ### 1. Create Resource ASAv - BYOL (bring your own license)
+- From the Azure Marketplace (search "Market Place" from the Azure Portal), search for "ASAv", click "Create", and select "Cisco Adaptive Security Appliance (ASAv) - BYOL"
+
+	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/0.%20Create-ASAv-Marketplace.png?raw=true "asav-on-azure-marketplace")
+
 - ASAv Basics
 
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/1.%20asav-deployment-basics.png?raw=true "asav-deployment-basics")
@@ -41,14 +51,30 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 - Deploy Ubuntu VM into the bastion subnet with SSH allowed from the internet
 - Update ASAv interfaces & routing for Bastion access
 	- SSH into the ASAv public IP (tied to the management interface)
-	- Configure the inside IP
+	- Configure the inside IP 
 
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/4.%20update-asav-inside-interface.png?raw=true "update-asav-inside-interface")
 
-	- Add an inside static route to the bastion subnet and update SSH, HTTP, and ICMP
+```
+int g0/1
+nameif inside
+ip address dhcp
+no shut
+```
+
+- Add an inside static route to the bastion subnet and update SSH, HTTP, and ICMP
 
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/5.%20add%20asav-inside-route.png?raw=true "add-asav-inside-route")
 
+
+```
+route inside 10.20.20.0 255.255.255.0 10.20.11.1
+ssh 10.20.20.0 255.255.255.0 inside
+icmp permit 10.20.20.0 255.255.255.0 inside
+http server enable
+http 10.20.20.0 255.255.255.0 inside
+wr
+```
 
 - SSH into the bastion host from the internet and confirm access to the ASAv instance via the bastion host. **Be sure to save config before proceeding.**
 
@@ -66,7 +92,7 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/7.%20update-asav-ipconfig1-settings.png?raw=true "update-asav-ipconfig1-settings")
 
 
-	- Repeat for each interface
+- Repeat for each interface
 
 - From the Azure portal, search public IP and create a new basic public IP to be used on the outside interface.
 
@@ -84,12 +110,27 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/10.%20update-asav-outside-interface.png?raw=true "update-asav-outside-interface")
 
-
-- Add a default quad zero route to the default gateway of the outside interface subnet (Azure gateways will always be the first available IP in the subnet) and update the SSH/ICMP/HTTP config.
+``` 
+int g0/0
+nameif ouside
+ip address dhcp
+no shut
+int management 0/0
+no ip address dhcp setroute
+shut
+no shut
+```
+- Add a default quad zero route to the default gateway of the outside interface subnet (Azure gateways will always be the first available IP in the subnet) and update the SSH/ICMP/HTTP config. ***Please note that allowing access from any IP on the internet is only for the purposes of this lab. In productions deployments ssh/http/icmp should be locked down to trusted IPs.***
 
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/11.%20update-asav-routing-and-access.png?raw=true "update-asav-routing-and-access")
 
 
+```
+route outside 0.0.0.0 0.0.0.0 10.20.10.1
+ssh 0.0.0.0 0.0.0.0 outside
+http 0.0.0.0 0.0.0.0 outside
+icmp permit 0.0.0.0 0.0.0.0 outside
+```
 - Test logging in via the outside interface public IP. Save config.
     
 	![alt text](https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/12.%20test-asav-outside-access.png?raw=true "test-asav-outside-access")
