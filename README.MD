@@ -17,6 +17,7 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 
 - ASAv on Azure is "BYOL": bring your own license. Unlicensed ASAv instances still have a full feature set but interface speeds are greatly reduced
 - Refer to the [Cisco ASAv datasheet](https://www.cisco.com/c/en/us/products/collateral/security/adaptive-security-virtual-appliance-asav/adapt-security-virtual-appliance-ds.html) for recommended VM types
+- Never assign a static IP within the OS of an Azure virtual machine. VM's should always be set to DHCP and within the Azure IP configuration on the virtual NIC you can set a static IP. Think of this like DHCP reservations: the client is still set to DHCP but it will always get the "static" IP you set within the Azure portal. 
 
 ## Deployment
 
