@@ -8,6 +8,10 @@ The beginner's guide to deploying ASAv on Azure from start to finish.
 
 <https://www.cisco.com/c/en/us/td/docs/security/asa/asa98/asav/quick-start-book/asav-98-qsg/asav-azure.html>
 
+**Cisco ASAv Quickstart Guide**
+
+<https://www.cisco.com/c/en/us/td/docs/security/asa/asa99/asav/quick-start/asav-quick/asav-azure.pdf>
+
 **Azure Virtual Network Traffic Routing**
 
 <https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview>
