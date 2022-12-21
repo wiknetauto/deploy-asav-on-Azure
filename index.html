@@ -1,0 +1,129 @@
+<h1 id="deploy-asav-on-azure">Deploy ASAv on Azure</h1>
+<p>The beginner&#39;s guide to deploying ASAv on Azure from start to finish.</p>
+<h2 id="references">References</h2>
+<p><strong>Cisco ASAv Getting Started Guide:</strong></p>
+<p><a href="https://www.cisco.com/c/en/us/td/docs/security/asa/asa98/asav/quick-start-book/asav-98-qsg/asav-azure.html">https://www.cisco.com/c/en/us/td/docs/security/asa/asa98/asav/quick-start-book/asav-98-qsg/asav-azure.html</a></p>
+<p><strong>Cisco ASAv Quickstart Guide</strong></p>
+<p><a href="https://www.cisco.com/c/en/us/td/docs/security/asa/asa99/asav/quick-start/asav-quick/asav-azure.pdf">https://www.cisco.com/c/en/us/td/docs/security/asa/asa99/asav/quick-start/asav-quick/asav-azure.pdf</a></p>
+<p><strong>Azure Virtual Network Traffic Routing</strong></p>
+<p><a href="https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview">https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-udr-overview</a></p>
+<h2 id="notes">Notes</h2>
+<ul>
+<li>ASAv on Azure is &quot;BYOL&quot;: bring your own license. Unlicensed ASAv instances still have a full feature set but interface speeds are greatly reduced</li>
+<li>Refer to the <a href="https://www.cisco.com/c/en/us/products/collateral/security/adaptive-security-virtual-appliance-asav/adapt-security-virtual-appliance-ds.html">Cisco ASAv datasheet</a> for recommended VM types</li>
+<li>Never assign a static IP within the OS of an Azure virtual machine. VM&#39;s should always be set to DHCP and within the Azure IP configuration on the virtual NIC you can set a static IP. Think of this like DHCP reservations: the client is still set to DHCP but it will always get the &quot;static&quot; IP you set within the Azure portal. </li>
+</ul>
+<h2 id="deployment">Deployment</h2>
+<h3 id="1-create-resource-asav-byol-bring-your-own-license-">1. Create Resource ASAv - BYOL (bring your own license)</h3>
+<ul>
+<li><p>From the Azure Marketplace (search &quot;Market Place&quot; from the Azure Portal), search for &quot;ASAv&quot;, click &quot;Create&quot;, and select &quot;Cisco Adaptive Security Appliance (ASAv) - BYOL&quot;</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/0.%20Create-ASAv-Marketplace.png?raw=true" alt="alt text" title="asav-on-azure-marketplace"></p>
+</li>
+<li><p>ASAv Basics</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/1.%20asav-deployment-basics.png?raw=true" alt="alt text" title="asav-deployment-basics"></p>
+</li>
+</ul>
+<ul>
+<li><p>ASAv Settings</p>
+<ul>
+<li><p>Config requires four subnets, one for each ASAv required interface (Management, Gigabit Ethernet 0 - 2)</p>
+</li>
+<li><p>Name each subnet appropriately for easy interface identification like below</p>
+<p><img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/2.%20asav-deployment-settinsg.png?raw=true" alt="alt text" title="asav-deployment-settings"></p>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>Review + Create</li>
+</ul>
+<h3 id="2-deploy-ubuntu-bastion-host">2. Deploy Ubuntu Bastion Host</h3>
+<ul>
+<li><p>Add subnet to the Hub Vnet for the bastion host</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/3.%20bastion-subnet-creation.png?raw=true" alt="alt text" title="bastion-subnet-creation"></p>
+</li>
+</ul>
+<ul>
+<li>Deploy Ubuntu VM into the bastion subnet with SSH allowed from the internet</li>
+<li><p>Update ASAv interfaces &amp; routing for Bastion access</p>
+<ul>
+<li>SSH into the ASAv public IP (tied to the management interface)</li>
+<li><p>Configure the inside IP </p>
+<p><img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/4.%20update-asav-inside-interface.png?raw=true" alt="alt text" title="update-asav-inside-interface"></p>
+</li>
+</ul>
+</li>
+</ul>
+<pre><code><span class="hljs-built_in">int</span> <span class="hljs-symbol">g0</span>/<span class="hljs-number">1</span>
+nameif inside
+ip <span class="hljs-built_in">address</span> dhcp
+no shut
+</code></pre><ul>
+<li><p>Add an inside static route to the bastion subnet and update SSH, HTTP, and ICMP</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/5.%20add%20asav-inside-route.png?raw=true" alt="alt text" title="add-asav-inside-route"></p>
+</li>
+</ul>
+<pre><code><span class="hljs-selector-tag">route</span> <span class="hljs-selector-tag">inside</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.0</span> 255<span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.0</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.11</span><span class="hljs-selector-class">.1</span>
+<span class="hljs-selector-tag">ssh</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.0</span> 255<span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">inside</span>
+<span class="hljs-selector-tag">icmp</span> <span class="hljs-selector-tag">permit</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.0</span> 255<span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">inside</span>
+<span class="hljs-selector-tag">http</span> <span class="hljs-selector-tag">server</span> <span class="hljs-selector-tag">enable</span>
+<span class="hljs-selector-tag">http</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.0</span> 255<span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.255</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">inside</span>
+<span class="hljs-selector-tag">wr</span>
+</code></pre><ul>
+<li><p>SSH into the bastion host from the internet and confirm access to the ASAv instance via the bastion host. <strong>Be sure to save config before proceeding.</strong></p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/6.%20ssh-from-bastion.png?raw=true" alt="alt text" title="ssh-from-bastion"></p>
+</li>
+</ul>
+<h3 id="3-configure-public-ip-routing">3. Configure Public IP &amp; Routing</h3>
+<ul>
+<li>Be sure to save the ASAv config.</li>
+<li>Shutdown the ASAv instance from the Azure portal (select option to preserve public IP).</li>
+<li><p>In the ASAv Azure portal network settings, update the static IP assignment to .254 for each ASAv interface</p>
+<ul>
+<li><p>Settings &gt; Networking &gt; Interface &gt; Settings &gt; IP Configuration &gt; ipconfig1 &gt; update static assignment</p>
+<p><img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/7.%20update-asav-ipconfig1-settings.png?raw=true" alt="alt text" title="update-asav-ipconfig1-settings"></p>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>Repeat for each interface</p>
+</li>
+<li><p>From the Azure portal, search public IP and create a new basic public IP to be used on the outside interface.</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/8.%20create-asav-outside-public-ip.png?raw=true" alt="alt text" title="create-asav-outside-pubilc-ip"></p>
+</li>
+</ul>
+<ul>
+<li><p>Under the IP Configurations for demo-asav-1-NIC1, associate the new outside public IP created in the last step.</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/9.%20associate-public-ip-with-outside.png?raw=true" alt="alt text" title="associate-public-ip-with-outside"></p>
+</li>
+</ul>
+<ul>
+<li>Attach the demo-asav-1-SecurityGroup SG to the demo-asav-1-Nic1 interface.</li>
+<li>Turn on the ASAv instance and SSH into it via the bastion host.</li>
+<li><p>Update the outside interface using setroute on the dhcp command (remove set route from management).</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/10.%20update-asav-outside-interface.png?raw=true" alt="alt text" title="update-asav-outside-interface"></p>
+</li>
+</ul>
+<pre><code><span class="hljs-keyword">int</span> g<span class="hljs-number">0</span>/<span class="hljs-number">0</span>
+nameif ouside
+ip address dhcp
+<span class="hljs-keyword">no</span> shut
+<span class="hljs-keyword">int</span> management <span class="hljs-number">0</span>/<span class="hljs-number">0</span>
+<span class="hljs-keyword">no</span> ip address dhcp setroute
+shut
+<span class="hljs-keyword">no</span> shut
+</code></pre><ul>
+<li><p>Add a default quad zero route to the default gateway of the outside interface subnet (Azure gateways will always be the first available IP in the subnet) and update the SSH/ICMP/HTTP config. <strong><em>Please note that allowing access from any IP on the internet is only for the purposes of this lab. In productions deployments ssh/http/icmp should be locked down to trusted IPs.</em></strong></p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/11.%20update-asav-routing-and-access.png?raw=true" alt="alt text" title="update-asav-routing-and-access"></p>
+</li>
+</ul>
+<pre><code><span class="hljs-selector-tag">route</span> <span class="hljs-selector-tag">outside</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> 10<span class="hljs-selector-class">.20</span><span class="hljs-selector-class">.10</span><span class="hljs-selector-class">.1</span>
+<span class="hljs-selector-tag">ssh</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">outside</span>
+<span class="hljs-selector-tag">http</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">outside</span>
+<span class="hljs-selector-tag">icmp</span> <span class="hljs-selector-tag">permit</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> 0<span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span><span class="hljs-selector-class">.0</span> <span class="hljs-selector-tag">outside</span>
+</code></pre><ul>
+<li><p>Test logging in via the outside interface public IP. Save config.</p>
+<p>  <img src="https://github.com/wiknetauto/deploy-asav-on-Azure/blob/main/Images/12.%20test-asav-outside-access.png?raw=true" alt="alt text" title="test-asav-outside-access"></p>
+</li>
+</ul>
